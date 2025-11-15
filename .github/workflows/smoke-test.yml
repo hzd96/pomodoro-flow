@@ -1,0 +1,37 @@
+name: PWA Smoke Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        working-directory: ./pomodoro-flow
+        run: |
+          npm ci
+
+      - name: Start static server
+        working-directory: ./pomodoro-flow
+        run: |
+          nohup python3 -m http.server 8000 --bind 127.0.0.1 >/tmp/pomodoro_server.log 2>&1 &
+          # give server a moment to start
+          sleep 2
+
+      - name: Run PWA smoke test
+        working-directory: ./pomodoro-flow
+        env:
+          CI: true
+        run: |
+          node tools/pwa_smoke_test.js

@@ -53,10 +53,10 @@ self.addEventListener('fetch', event => {
 // Notification click handler
 self.addEventListener('notificationclick', event => {
   event.notification.close();
-  event.waitUntil(
+    event.waitUntil(
     clients.matchAll({ type: 'window' }).then(list => {
       if (list.length > 0) return list[0].focus();
-      return clients.openWindow('/');
+      return clients.openWindow('./');
     })
   );
 });

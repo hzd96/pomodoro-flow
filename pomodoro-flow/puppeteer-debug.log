@@ -1,0 +1,32 @@
+PWA smoke test starting...
+Launching Chromium with options: {
+  executablePath: '/home/codespace/.cache/puppeteer/chrome/linux-142.0.7444.162/chrome-linux64/chrome',
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-accelerated-2d-canvas',
+    '--disable-gpu'
+  ]
+}
+2025-11-15T14:56:12.481Z puppeteer:browsers:launcher Launching /home/codespace/.cache/puppeteer/chrome/linux-142.0.7444.162/chrome-linux64/chrome --allow-pre-commit-input --disable-background-networking --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-breakpad --disable-client-side-phishing-detection --disable-component-extensions-with-background-pages --disable-crash-reporter --disable-default-apps --disable-dev-shm-usage --disable-hang-monitor --disable-infobars --disable-ipc-flooding-protection --disable-popup-blocking --disable-prompt-on-repost --disable-renderer-backgrounding --disable-search-engine-choice-screen --disable-sync --enable-automation --export-tagged-pdf --force-color-profile=srgb --generate-pdf-document-outline --metrics-recording-only --no-first-run --password-store=basic --use-mock-keychain --disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,RenderDocument,ProcessPerSiteUpToMainFrameThreshold,IsolateSandboxedIframes --enable-features=PdfOopif --headless=new --hide-scrollbars --mute-audio --disable-extensions about:blank --no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage --disable-accelerated-2d-canvas --disable-gpu --remote-debugging-port=0 --user-data-dir=/tmp/puppeteer_dev_chrome_profile-pL2NB8 {
+  detached: true,
+  env: {
+    PUPPETEER_EXECUTABLE_PATH: '/home/codespace/.cache/puppeteer/chrome/linux-142.0.7444.162/chrome-linux64/chrome'
+  },
+  stdio: [ 'pipe', 'pipe', 'pipe' ]
+}
+2025-11-15T14:56:12.487Z puppeteer:browsers:launcher Launched 64703
+2025-11-15T14:56:12.491Z puppeteer:browsers:launcher Browser process 64703 onExit
+Failed to launch Chromium.
+Failed to launch the browser process:  Code: 127
+
+stderr:
+/home/codespace/.cache/puppeteer/chrome/linux-142.0.7444.162/chrome-linux64/chrome: error while loading shared libraries: libatk-1.0.so.0: cannot open shared object file: No such file or directory
+
+TROUBLESHOOTING: https://pptr.dev/troubleshooting
+
+If you are running in a headless container, install a system Chromium or use the bundled Chromium from `puppeteer` package.
+You can try:
+  sudo apt-get update && sudo apt-get install -y chromium-browser
+or set PUPPETEER_EXECUTABLE_PATH to a valid Chrome/Chromium binary
