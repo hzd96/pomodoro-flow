@@ -1,0 +1,36 @@
+{
+  "name": "pomodoro-flow",
+  "version": "1.0.0",
+  "description": "Pomodoro Flow — PWA + Electron scaffold",
+  "main": "electron/main.js",
+  "scripts": {
+    "start-web": "npx serve -s . -l 8080",
+    "start-electron": "electron .",
+    "build": "echo \"No web build step configured; add your build pipeline if needed\"",
+    "package-mac": "electron-builder --mac --x64",
+    "package-all": "electron-builder"
+  },
+  "build": {
+    "appId": "com.hzd96.pomodoro",
+    "productName": "Pomodoro Flow",
+    "files": [
+      "**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "asar": true
+    }
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

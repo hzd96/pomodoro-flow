@@ -1,0 +1,21 @@
+{
+  "name": "Pomodoro Flow Enhanced",
+  "short_name": "Pomodoro",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0f0f23",
+  "theme_color": "#0f0f23",
+  "description": "Enhanced offline-capable Pomodoro Timer",
+  "icons": [
+    {
+      "src": "/icons/pomodoro-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/pomodoro-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

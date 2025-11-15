@@ -1,0 +1,45 @@
+name: Build & Notarize macOS (electron)
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      P12_BASE64: ${{ secrets.OSX_SIGN_P12_BASE64 }}
+      P12_PASSWORD: ${{ secrets.OSX_SIGN_P12_PASSWORD }}
+      APP_SPECIFIC_PASSWORD: ${{ secrets.APP_SPECIFIC_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build || echo "No build step configured"
+
+      - name: Import signing certificate
+        run: |
+          echo "$P12_BASE64" | base64 --decode > signing.p12
+          security create-keychain -p github-actions build.keychain
+          security import signing.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p github-actions build.keychain
+
+      - name: Package macOS with electron-builder
+        run: npm run package-mac
+
+      - name: Notarize with notarytool (example)
+        run: |
+          # Replace with actual artifact path
+          echo "Notarization placeholder - configure notarytool or altool with secrets"

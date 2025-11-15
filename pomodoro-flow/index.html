@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Pomodoro Flow — universal modern webapp with digital & analog timers, PWA support." />
+  <meta name="theme-color" id="theme-color-meta" content="#0f0f23" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>Pomodoro Flow</title>
+  <script src="https://unpkg.com/lucide@latest" defer></script>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="particles" id="particles" aria-hidden="true"></div>
+  <div class="app-container" id="app">
+    <header class="header">
+      <div class="logo">
+        <div class="logo-circle" aria-hidden="true">
+          <i data-lucide="timer" width="24" height="24" color="white"></i>
+        </div>
+      </div>
+      <h1 class="title">Pomodoro Flow</h1>
+      <p class="subtitle">Enhanced with Auto-Start, Sound & Analog Timer</p>
+      <div class="current-datetime" id="current-datetime" aria-hidden="false">
+        <span class="datetime-icon" aria-hidden="true"><i data-lucide="calendar" width="16" height="16"></i></span>
+        <span id="dt-date" class="dt-date"></span>
+        <span class="datetime-separator"> • </span>
+        <span class="datetime-icon" aria-hidden="true"><i data-lucide="clock" width="16" height="16"></i></span>
+        <span id="dt-time" class="dt-time" aria-live="polite"></span>
+      </div>
+    </header>
+    <main class="main-layout">
+      <aside class="side-panel" id="stats-panel" aria-labelledby="stats-heading">
+        <h2 id="stats-heading" class="panel-title">
+          <i data-lucide="bar-chart-3" width="20" height="20"></i>
+          Statistics
+        </h2>
+        <div class="stats-list" id="stats-list">
+          <div class="stat-item"><span class="stat-label">Total</span><span class="stat-value" id="stat-total">0</span></div>
+          <div class="stat-item"><span class="stat-label">Completed</span><span class="stat-value" id="stat-completed">0</span></div>
+          <div class="stat-item"><span class="stat-label">Remaining</span><span class="stat-value" id="stat-remaining">0</span></div>
+          <div class="stat-item"><span class="stat-label">Duration</span><span class="stat-value" id="stat-duration">0h 0m</span></div>
+        </div>
+      </aside>
+      <section class="timer-section" aria-labelledby="timer-heading">
+        <h2 id="timer-heading" class="visually-hidden">Pomodoro Timer</h2>
+        <div class="circular-timer" id="digital-timer" role="region" aria-label="Digital timer">
+          <svg class="timer-ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="timer-ring-bg" cx="100" cy="100" r="90"/>
+            <circle class="timer-ring-progress" id="timer-ring-progress" cx="100" cy="100" r="90" stroke-dasharray="565.48" stroke-dashoffset="565.48"/>
+          </svg>
+          <div class="timer-content">
+            <span class="session-badge" id="session-badge">Work</span>
+            <div class="timer-display" id="timer-display" aria-live="polite" aria-atomic="true">25:00</div>
+            <div class="session-number" id="session-number">Session 1 of 10</div>
+          </div>
+        </div>
+        <div class="analog-timer hidden" id="analog-timer" role="region" aria-label="Analog timer">
+          <svg class="analog-progress-ring" viewBox="0 0 200 200" aria-hidden="true">
+            <circle class="analog-progress" id="analog-progress" cx="100" cy="100" r="90" stroke-dasharray="565.48" stroke-dashoffset="565.48"/>
+          </svg>
+          <div class="tick-marks" id="tick-marks" aria-hidden="true"></div>
+          <div class="clock-numbers" id="clock-numbers" aria-hidden="true"></div>
+          <div class="hour-hand clock-hand" id="hour-hand" aria-hidden="true"></div>
+          <div class="minute-hand clock-hand" id="minute-hand" aria-hidden="true"></div>
+          <div class="second-hand clock-hand" id="second-hand" aria-hidden="true"></div>
+          <div class="clock-center" aria-hidden="true"></div>
+          <div class="analog-timer-info" aria-hidden="false">
+            <span class="analog-session-badge" id="analog-session-badge">Work</span>
+            <div class="analog-time-display" id="analog-time-display">25:00</div>
+            <div class="analog-session-number" id="analog-session-number">Session 1 of 10</div>
+          </div>
+        </div>
+        <div class="controls" role="toolbar" aria-label="Timer controls">
+          <button class="btn btn-primary" id="start-btn" aria-label="Start Timer">
+            <i data-lucide="play" width="20" height="20"></i><span>Start</span>
+          </button>
+          <button class="btn btn-primary hidden" id="pause-btn" aria-label="Pause Timer">
+            <i data-lucide="pause" width="20" height="20"></i><span>Pause</span>
+          </button>
+          <button class="btn btn-secondary" id="skip-btn" aria-label="Skip to next session">
+            <i data-lucide="skip-forward" width="18" height="18"></i><span>Skip</span>
+          </button>
+          <button class="btn btn-secondary" id="reset-btn" aria-label="Reset all progress">
+            <i data-lucide="rotate-ccw" width="18" height="18"></i><span>Reset</span>
+          </button>
+          <button class="btn btn-secondary" id="config-btn" aria-haspopup="dialog" aria-controls="config-overlay">
+            <i data-lucide="settings" width="18" height="18"></i><span>Config</span>
+          </button>
+        </div>
+      </section>
+      <aside class="side-panel" aria-labelledby="schedule-heading">
+        <h2 id="schedule-heading" class="panel-title">
+          <i data-lucide="list" width="20" height="20"></i>
+          Schedule
+        </h2>
+        <div class="timeline" id="timeline" aria-live="polite"></div>
+      </aside>
+    </main>
+  </div>
+  <div class="config-overlay" id="config-overlay" role="dialog" aria-modal="true" aria-labelledby="config-title" hidden>
+    <div class="config-panel" role="document">
+      <div class="config-header">
+        <h2 id="config-title" class="config-title">Configuration</h2>
+        <button class="close-btn" id="close-config" aria-label="Close configuration settings">
+          <i data-lucide="x" width="24" height="24"></i>
+        </button>
+      </div>
+      <form id="config-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="start-time">Start Time</label>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="time" id="start-time" class="form-input" required />
+              <button type="button" class="btn-icon" id="use-now-btn" title="Use current time">
+                <i data-lucide="clock-3" width="18" height="18"></i>
+              </button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="total-sessions">Total Sessions</label>
+            <input type="number" id="total-sessions" class="form-input" min="1" max="20" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="work-duration">Work (min)</label>
+            <input type="number" id="work-duration" class="form-input" min="1" max="240" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="short-break">Short Break (min)</label>
+            <input type="number" id="short-break" class="form-input" min="1" max="120" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="long-break">Long Break (min)</label>
+            <input type="number" id="long-break" class="form-input" min="1" max="240" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="sessions-before-long">Sessions Before Long</label>
+            <input type="number" id="sessions-before-long" class="form-input" min="2" max="10" required />
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label">Auto-Start Next Session</label>
+            <div class="toggle-group">
+              <div class="toggle-switch" id="auto-start-toggle" role="switch" tabindex="0" aria-checked="false">
+                <div class="toggle-slider"></div>
+              </div>
+              <span class="form-label">Automatically start next session when timer ends</span>
+            </div>
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label">Sound Notification</label>
+            <div class="toggle-group">
+              <div class="toggle-switch active" id="sound-toggle" role="switch" tabindex="0" aria-checked="true">
+                <div class="toggle-slider"></div>
+              </div>
+              <span class="form-label">Play sound when timer ends</span>
+            </div>
+          </div>
+          <div class="form-group form-group-full">
+            <label class="form-label">Timer Style</label>
+            <div class="radio-group" role="radiogroup" aria-label="Timer style">
+              <div class="radio-option active" data-timer-style="digital" role="radio" tabindex="0" aria-checked="true">
+                <i data-lucide="monitor" width="18" height="18"></i>
+                <div>Digital</div>
+              </div>
+              <div class="radio-option" data-timer-style="analog" role="radio" tabindex="0" aria-checked="false">
+                <i data-lucide="clock" width="18" height="18"></i>
+                <div>Analog</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="theme-switcher" aria-hidden="false">
+          <span class="form-label">Theme:</span>
+          <button type="button" class="btn btn-secondary" data-theme-set="light" aria-label="Switch to light theme"><i data-lucide="sun"></i></button>
+          <button type="button" class="btn btn-secondary" data-theme-set="dark" aria-label="Switch to dark theme"><i data-lucide="moon"></i></button>
+          <button type="button" class="btn btn-secondary" data-theme-set="system" aria-label="Switch to system theme"><i data-lucide="laptop"></i></button>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:20px;">
+          <i data-lucide="check" width="20" height="20"></i>
+          <span>Generate Schedule</span>
+        </button>
+      </form>
+    </div>
+  </div>
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
