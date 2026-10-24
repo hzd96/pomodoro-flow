@@ -1,7 +1,7 @@
 {
   "name": "Pomodoro Flow",
   "short_name": "Pomodoro",
-  "description": "Fast, offline-ready Pomodoro timer with schedule planning and daily stats.",
+  "description": "A fast, offline-ready Pomodoro timer with a session planner, per-session tasks, and daily stats.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

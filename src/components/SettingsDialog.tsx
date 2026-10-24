@@ -1,8 +1,8 @@
-import { forwardRef } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import type { Pomodoro } from '../usePomodoro';
-import type { Settings, ThemeName } from '../types';
+import type { NumericSetting, Settings, ThemeName } from '../types';
 import { requestNotifications } from '../lib/alerts';
-import { buildSchedule } from '../lib/schedule';
+import { buildSchedule, SETTING_BOUNDS } from '../lib/schedule';
 import { Icon } from './Icon';
 
 const THEMES: { id: ThemeName; label: string; swatch: [string, string] }[] = [
@@ -12,7 +12,7 @@ const THEMES: { id: ThemeName; label: string; swatch: [string, string] }[] = [
   { id: 'ocean', label: 'Ocean', swatch: ['#63d1e4', '#ff8c69'] },
   { id: 'synthwave', label: 'Synthwave', swatch: ['#00d9ff', '#ff00c1'] },
   { id: 'glamour', label: 'Glamour', swatch: ['#ffffff', '#d4af37'] },
-  { id: 'light', label: 'Light', swatch: ['#e5484d', '#12a594'] },
+  { id: 'light', label: 'Light', swatch: ['#c9353a', '#0d8576'] },
 ];
 
 const PRESETS = [
@@ -21,20 +21,46 @@ const PRESETS = [
   { label: '90 / 20', work: 90, short: 20, long: 30 },
 ];
 
-type NumKey = 'workMinutes' | 'shortBreakMinutes' | 'longBreakMinutes' | 'sessionsBeforeLongBreak' | 'totalSessions';
-const NUMBERS: { key: NumKey; label: string; min: number; max: number }[] = [
-  { key: 'workMinutes', label: 'Focus (min)', min: 1, max: 180 },
-  { key: 'shortBreakMinutes', label: 'Short break', min: 1, max: 60 },
-  { key: 'longBreakMinutes', label: 'Long break', min: 1, max: 90 },
-  { key: 'sessionsBeforeLongBreak', label: 'Long break every', min: 2, max: 10 },
-  { key: 'totalSessions', label: 'Focus sessions', min: 1, max: 20 },
+const NUMBERS: { key: NumericSetting; label: string }[] = [
+  { key: 'workMinutes', label: 'Focus (min)' },
+  { key: 'shortBreakMinutes', label: 'Short break (min)' },
+  { key: 'longBreakMinutes', label: 'Long break (min)' },
+  { key: 'sessionsBeforeLongBreak', label: 'Long break every' },
+  { key: 'totalSessions', label: 'Focus sessions' },
 ];
+
+/**
+ * A number input that keeps what is typed as a draft and saves it on blur or Enter, so values can be
+ * cleared and retyped (e.g. "10" when the minimum is 2). Out-of-range drafts are flagged, not saved.
+ */
+function NumberField({ label, value, min, max, onCommit }: {
+  label: string; value: number; min: number; max: number; onCommit: (v: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const n = Number(draft);
+  const valid = draft.trim() !== '' && Number.isInteger(n) && n >= min && n <= max;
+  const commit = () => (valid ? n !== value && onCommit(n) : setDraft(String(value)));
+  return (
+    <label className="text-xs text-muted">
+      {label}
+      <input
+        type="number" inputMode="numeric" className="field mt-1 text-base aria-invalid:border-danger"
+        min={min} max={max} step={1} value={draft} aria-invalid={!valid}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && commit()}
+      />
+      {!valid && <span className="mt-1 block text-[11px] text-danger">{min}–{max}</span>}
+    </label>
+  );
+}
 
 type BoolKey = 'autoStart' | 'sound' | 'notifications' | 'keepAwake';
 const TOGGLES: { key: BoolKey; label: string; hint: string }[] = [
-  { key: 'autoStart', label: 'Auto-start next', hint: 'Roll into the next session automatically' },
+  { key: 'autoStart', label: 'Auto-start next', hint: 'Start the next session automatically' },
   { key: 'sound', label: 'Sound', hint: 'Chime when a session ends' },
-  { key: 'notifications', label: 'Notifications', hint: 'System notification when a session ends' },
+  { key: 'notifications', label: 'Notifications', hint: 'Show a system notification when a session ends' },
   { key: 'keepAwake', label: 'Keep screen on', hint: 'While a session is running' },
 ];
 
@@ -44,7 +70,7 @@ export const SettingsDialog = forwardRef<HTMLDialogElement, { p: Pomodoro }>(fun
 
   const toggle = async (key: BoolKey) => {
     if (key === 'notifications' && !s.notifications && !(await requestNotifications())) {
-      alert('Notifications are blocked for this site in your browser settings.');
+      alert('Notifications are blocked or unsupported. If blocked, allow them for this site in your browser settings.');
       return;
     }
     updateSettings({ [key]: !s[key] } as Partial<Settings>);
@@ -81,22 +107,16 @@ export const SettingsDialog = forwardRef<HTMLDialogElement, { p: Pomodoro }>(fun
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {NUMBERS.map((n) => (
-            <label key={n.key} className="text-xs text-muted">
-              {n.label}
-              <input
-                type="number" inputMode="numeric" className="field mt-1 text-base" min={n.min} max={n.max} value={s[n.key]}
-                onChange={(e) => {
-                  const v = Math.round(Number(e.target.value));
-                  if (v >= n.min && v <= n.max) updateSettings({ [n.key]: v } as Partial<Settings>);
-                }}
-              />
-            </label>
+            <NumberField
+              key={n.key} label={n.label} value={s[n.key]} {...SETTING_BOUNDS[n.key]}
+              onCommit={(v) => updateSettings({ [n.key]: v } as Partial<Settings>)}
+            />
           ))}
         </div>
 
         {durationsChanged && (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-primary/10 p-3 text-xs">
-            <span>New durations apply to the next plan.</span>
+            <span>Duration and session changes apply to the next plan.</span>
             <button className="btn shrink-0 bg-primary px-3 py-1.5 text-xs text-bg" onClick={() => p.reset()}>
               Restart plan now
             </button>
@@ -113,8 +133,8 @@ export const SettingsDialog = forwardRef<HTMLDialogElement, { p: Pomodoro }>(fun
                 <span className="block text-sm font-medium">{t.label}</span>
                 <span className="block text-xs text-muted">{t.hint}</span>
               </span>
-              <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${s[t.key] ? 'bg-primary' : 'bg-surface-2'}`}>
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left] ${s[t.key] ? 'left-[1.375rem]' : 'left-0.5'}`} />
+              <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${s[t.key] ? 'bg-primary' : 'bg-surface-2 ring-1 ring-inset ring-muted/60'}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full shadow ${s[t.key] ? 'bg-white' : 'bg-muted'} transition-[left] ${s[t.key] ? 'left-[1.375rem]' : 'left-0.5'}`} />
               </span>
             </button>
           ))}

@@ -2,7 +2,7 @@ import type { SessionType } from '../types';
 
 let ctx: AudioContext | null = null;
 
-/** Must be called from a user gesture so browsers allow sound later. */
+/** Creates or resumes the audio context. Call it from a user gesture so browsers allow sound later. */
 export function unlockAudio() {
   try {
     ctx ??= new AudioContext();
@@ -12,7 +12,7 @@ export function unlockAudio() {
   }
 }
 
-/** A short chime: rising after a break (back to work), falling after focus. */
+/** Plays a short chime: falling after a focus session, rising after a break (back to work). */
 export function chime(finished: SessionType) {
   if (!ctx) return;
   const notes = finished === 'work' ? [880, 660, 523] : [523, 660, 880];
@@ -39,8 +39,9 @@ export async function requestNotifications(): Promise<boolean> {
 
 export async function notify(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const opts = { body, icon: '/icons/icon-192.png', tag: 'pomoflow' };
+  const opts = { body, icon: '/icons/icon-192.png', tag: 'pomodoro-flow' };
   try {
+    // Prefer the service worker: `new Notification()` throws on Android Chrome.
     const reg = await navigator.serviceWorker?.getRegistration();
     if (reg) return void (await reg.showNotification(title, opts));
     new Notification(title, opts);

@@ -1,15 +1,4 @@
-import type { Session, Settings } from '../types';
-
-export function buildSchedule(s: Settings): Session[] {
-  const out: Session[] = [];
-  for (let n = 1; n <= s.totalSessions; n++) {
-    out.push({ type: 'work', minutes: s.workMinutes, n });
-    if (n === s.totalSessions) break;
-    const long = n % s.sessionsBeforeLongBreak === 0;
-    out.push({ type: long ? 'long' : 'short', minutes: long ? s.longBreakMinutes : s.shortBreakMinutes, n });
-  }
-  return out;
-}
+import type { NumericSetting, Session, Settings } from '../types';
 
 export const LABELS: Record<Session['type'], string> = {
   work: 'Focus',
@@ -17,20 +6,28 @@ export const LABELS: Record<Session['type'], string> = {
   long: 'Long break',
 };
 
-export function fmtClock(seconds: number): string {
-  const s = Math.max(0, Math.round(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const ss = String(s % 60).padStart(2, '0');
-  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`;
-}
+/** Allowed range for each numeric setting; shared by the settings form and the storage loader. */
+export const SETTING_BOUNDS: Record<NumericSetting, { min: number; max: number }> = {
+  workMinutes: { min: 1, max: 180 },
+  shortBreakMinutes: { min: 1, max: 60 },
+  longBreakMinutes: { min: 1, max: 90 },
+  sessionsBeforeLongBreak: { min: 2, max: 10 },
+  totalSessions: { min: 1, max: 20 },
+};
 
-export function fmtTime(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
+export const clampSetting = (key: NumericSetting, value: number): number => {
+  const { min, max } = SETTING_BOUNDS[key];
+  return Math.min(max, Math.max(min, Math.round(value)));
+};
 
-export function fmtMinutes(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = Math.round(min % 60);
-  return h ? `${h}h ${m}m` : `${m}m`;
+/** Builds the plan: each focus session is followed by a break (a long one after every Nth), except the last. */
+export function buildSchedule(s: Settings): Session[] {
+  const out: Session[] = [];
+  for (let n = 1; n <= s.totalSessions; n++) {
+    out.push({ type: 'work', minutes: s.workMinutes, focusNumber: n });
+    if (n === s.totalSessions) break;
+    const long = n % s.sessionsBeforeLongBreak === 0;
+    out.push({ type: long ? 'long' : 'short', minutes: long ? s.longBreakMinutes : s.shortBreakMinutes, focusNumber: n });
+  }
+  return out;
 }

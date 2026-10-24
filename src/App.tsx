@@ -11,33 +11,47 @@ export default function App() {
   const dialog = useRef<HTMLDialogElement>(null);
   const openSettings = () => dialog.current?.showModal();
 
-  // Keyboard shortcuts (ignored while typing or with a dialog open).
+  // Keyboard shortcuts (ignored while typing, while a dialog is open, or with Ctrl, Alt, or Meta held).
+  // They match physical keys (e.code), so they also work on non-Latin layouts such as Persian.
   const pRef = useRef(p);
   pRef.current = p;
   useEffect(() => {
+    // Whether focus last moved by keyboard (Tab) rather than a click, so Space only presses a button
+    // the user tabbed to. (:focus-visible can't tell: Chrome sets it on any key press.)
+    let keyboardFocus = false;
+    const onPointer = () => (keyboardFocus = false);
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement;
-      if (e.metaKey || e.ctrlKey || e.altKey || dialog.current?.open || el.closest('input, textarea, select')) return;
+      if (e.code === 'Tab') keyboardFocus = true;
+      // The target is usually an element, but can be the document or window for synthetic events.
+      const el = e.target instanceof Element ? e.target : document.body;
+      if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || dialog.current?.open) return;
+      if (el.closest('input, textarea, select, [contenteditable="true"]')) return;
       const p = pRef.current;
-      switch (e.key.toLowerCase()) {
-        case ' ':
+      switch (e.code) {
+        case 'Space':
+          // Let Space press a button the user tabbed to; after a click it still toggles the timer.
+          if (keyboardFocus && el.closest('button, a, summary, [role="switch"]')) return;
           e.preventDefault();
           if (p.running) p.pause();
           else p.start();
           break;
-        case 'n':
+        case 'KeyN':
           if (!p.done) p.skip();
           break;
-        case 'r':
-          p.reset();
+        case 'KeyR':
+          p.confirmReset();
           break;
-        case 's':
+        case 'KeyS':
           dialog.current?.showModal();
           break;
       }
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onPointer, true);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onPointer, true);
+    };
   }, []);
 
   return (
@@ -47,7 +61,7 @@ export default function App() {
           <img src="/icons/icon.svg" alt="" className="h-8 w-8" />
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Pomodoro Flow</span>
         </h1>
-        <button className="btn bg-surface-2/80 p-2.5 text-fg" onClick={openSettings} aria-label="Settings (S)" title="Settings (S)">
+        <button className="btn bg-surface-2/80 p-2.5 text-fg" onClick={openSettings} aria-label="Settings" title="Settings (S)">
           <Icon name="settings" />
         </button>
       </header>
