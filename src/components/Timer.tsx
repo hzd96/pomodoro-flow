@@ -8,7 +8,7 @@ const CIRC = 2 * Math.PI * R;
 
 function Digital({ progress, active }: { progress: number; active: boolean }) {
   return (
-    <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90">
+    <svg viewBox="0 0 200 200" className="absolute inset-0 -rotate-90 overflow-visible">
       <circle cx="100" cy="100" r={R} fill="none" strokeWidth="10" stroke="var(--line)" />
       <circle
         cx="100" cy="100" r={R} fill="none" strokeWidth="10" stroke="currentColor" strokeLinecap="round"
