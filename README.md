@@ -13,6 +13,7 @@
 ![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-offline_ready-5A0FC8?logo=pwa&logoColor=white)
 ![Cloudflare Pages](https://img.shields.io/badge/Cloudflare-Pages-F38020?logo=cloudflare&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 [Features](#-features) · [Quick start](#-quick-start) · [Deploy](#-deploy-to-cloudflare-pages) · [Roadmap](#-roadmap)
 
@@ -521,7 +522,7 @@ Tags: priority **high / med / low** · effort **S / M / L**. IDs are stable refe
 
 ### Repo hygiene
 
-- [ ] **H1** Add a LICENSE (`engines` and `.nvmrc` are done) — `high · S`
+- [x] **H1** Add a LICENSE (MIT), `engines` and `.nvmrc` — `high · S`
 - [ ] **H4** Archive the old [`hzd96/PomoFlow`](https://github.com/hzd96/PomoFlow) repo (its history now lives here) — `med · S`
 - [ ] **H2** Repo topics, branch protection, Dependabot — `low · S`
 - [ ] **H3** Pin `wrangler` as a dev dependency; add lint and artifact steps to CI (tests already run) — `low · S`
@@ -534,7 +535,7 @@ Tags: priority **high / med / low** · effort **S / M / L**. IDs are stable refe
 
 ### Docs
 
-- [ ] **D1** Live URL and license badges, a `CHANGELOG.md`, refreshed screenshots after visual fixes — `low · S`
+- [ ] **D1** Live URL badge, a `CHANGELOG.md`, refreshed screenshots after visual fixes — `low · S`
 
 </details>
 
@@ -566,4 +567,4 @@ Both were rewritten into the current React + TypeScript app. The git history of 
 
 ## 📄 License
 
-No license has been chosen yet, so all rights are reserved by default. Adding a license is on the [Roadmap](#repo-hygiene) (H1). Until a license is added, please open an issue before contributing so the terms are clear.
+Released under the [MIT License](LICENSE).
