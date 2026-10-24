@@ -19,7 +19,7 @@ function Digital({ progress, active }: { progress: number; active: boolean }) {
   );
 }
 
-/** Kitchen-timer style: a wedge shows the minutes left on a 60‑minute face. */
+/** Kitchen-timer style: a wedge shows the time left on a 60-minute face (a full disc for an hour or more). */
 function Analog({ seconds }: { seconds: number }) {
   const frac = Math.min(seconds / 3600, 1);
   const a = frac * 2 * Math.PI;
@@ -100,7 +100,7 @@ export function Timer({ p }: { p: Pomodoro }) {
         )}
         <button
           className="btn h-12 w-12 bg-surface-2 p-0 text-fg disabled:opacity-40" onClick={p.skip} disabled={done}
-          title="Skip to next (N)" aria-label="Skip to next session"
+          title="Skip to next session (N)" aria-label="Skip to next session"
         >
           <Icon name="skip" />
         </button>

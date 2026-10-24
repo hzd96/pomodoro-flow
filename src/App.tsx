@@ -11,7 +11,7 @@ export default function App() {
   const dialog = useRef<HTMLDialogElement>(null);
   const openSettings = () => dialog.current?.showModal();
 
-  // Keyboard shortcuts (ignored while typing or with a dialog open).
+  // Keyboard shortcuts (ignored while typing, while a dialog is open, or with Ctrl, Alt, or Meta held).
   const pRef = useRef(p);
   pRef.current = p;
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function App() {
           <img src="/icons/icon.svg" alt="" className="h-8 w-8" />
           <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Pomodoro Flow</span>
         </h1>
-        <button className="btn bg-surface-2/80 p-2.5 text-fg" onClick={openSettings} aria-label="Settings (S)" title="Settings (S)">
+        <button className="btn bg-surface-2/80 p-2.5 text-fg" onClick={openSettings} aria-label="Settings" title="Settings (S)">
           <Icon name="settings" />
         </button>
       </header>

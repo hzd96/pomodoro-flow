@@ -1,5 +1,5 @@
-// Offline support: network-first for pages, stale-while-revalidate for
-// static files.
+// Offline support: network-first for page navigations (falling back to the cached app shell)
+// and stale-while-revalidate for same-origin static files. Bump CACHE to drop old caches.
 const CACHE = 'pomoflow-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png'];
 

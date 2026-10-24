@@ -9,6 +9,7 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 );
 
+// Register the service worker in production only; in development it would serve stale cached files.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }

@@ -15,7 +15,7 @@
   --color-line: var(--line);
 }
 
-/* "classic" is the original Pomodoro Flow palette; the rest come from PomoFlow. */
+/* Theme palettes. "classic" (the default) is the original Pomodoro Flow palette; the others come from PomoFlow. */
 :root,
 [data-theme="classic"] {
   --bg: #0f0f23; --surface: #1a1a2e; --surface-2: #16213e; --fg: #e9ecef; --muted: #8d96a0;

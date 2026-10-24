@@ -13,7 +13,7 @@ function lastDays(n: number) {
 
 function streak(stats: StatsData) {
   const d = new Date();
-  if (!stats[dayKey(d)]?.s) d.setDate(d.getDate() - 1); // today not started yet doesn't break it
+  if (!stats[dayKey(d)]?.s) d.setDate(d.getDate() - 1); // Start from yesterday if today has no sessions yet.
   let count = 0;
   while (stats[dayKey(d)]?.s) {
     count++;
@@ -57,7 +57,7 @@ export function Stats({ stats }: { stats: StatsData }) {
           </div>
         ))}
       </div>
-      <p className="mt-2 text-right text-xs text-muted">7 days: {fmtMinutes(weekMin)}</p>
+      <p className="mt-2 text-right text-xs text-muted">Last 7 days: {fmtMinutes(weekMin)}</p>
     </section>
   );
 }

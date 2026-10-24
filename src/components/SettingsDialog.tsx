@@ -24,17 +24,17 @@ const PRESETS = [
 type NumKey = 'workMinutes' | 'shortBreakMinutes' | 'longBreakMinutes' | 'sessionsBeforeLongBreak' | 'totalSessions';
 const NUMBERS: { key: NumKey; label: string; min: number; max: number }[] = [
   { key: 'workMinutes', label: 'Focus (min)', min: 1, max: 180 },
-  { key: 'shortBreakMinutes', label: 'Short break', min: 1, max: 60 },
-  { key: 'longBreakMinutes', label: 'Long break', min: 1, max: 90 },
+  { key: 'shortBreakMinutes', label: 'Short break (min)', min: 1, max: 60 },
+  { key: 'longBreakMinutes', label: 'Long break (min)', min: 1, max: 90 },
   { key: 'sessionsBeforeLongBreak', label: 'Long break every', min: 2, max: 10 },
   { key: 'totalSessions', label: 'Focus sessions', min: 1, max: 20 },
 ];
 
 type BoolKey = 'autoStart' | 'sound' | 'notifications' | 'keepAwake';
 const TOGGLES: { key: BoolKey; label: string; hint: string }[] = [
-  { key: 'autoStart', label: 'Auto-start next', hint: 'Roll into the next session automatically' },
+  { key: 'autoStart', label: 'Auto-start next', hint: 'Start the next session automatically' },
   { key: 'sound', label: 'Sound', hint: 'Chime when a session ends' },
-  { key: 'notifications', label: 'Notifications', hint: 'System notification when a session ends' },
+  { key: 'notifications', label: 'Notifications', hint: 'Show a system notification when a session ends' },
   { key: 'keepAwake', label: 'Keep screen on', hint: 'While a session is running' },
 ];
 
@@ -44,7 +44,7 @@ export const SettingsDialog = forwardRef<HTMLDialogElement, { p: Pomodoro }>(fun
 
   const toggle = async (key: BoolKey) => {
     if (key === 'notifications' && !s.notifications && !(await requestNotifications())) {
-      alert('Notifications are blocked for this site in your browser settings.');
+      alert('Notifications are blocked or unsupported. If blocked, allow them for this site in your browser settings.');
       return;
     }
     updateSettings({ [key]: !s[key] } as Partial<Settings>);
@@ -96,7 +96,7 @@ export const SettingsDialog = forwardRef<HTMLDialogElement, { p: Pomodoro }>(fun
 
         {durationsChanged && (
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-primary/10 p-3 text-xs">
-            <span>New durations apply to the next plan.</span>
+            <span>Duration and session changes apply to the next plan.</span>
             <button className="btn shrink-0 bg-primary px-3 py-1.5 text-xs text-bg" onClick={() => p.reset()}>
               Restart plan now
             </button>

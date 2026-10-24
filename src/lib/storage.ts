@@ -43,12 +43,13 @@ function write(key: string, value: unknown) {
 
 export function loadState(): Saved {
   const saved = read<Partial<Saved>>(KEY);
+  // Merge over the defaults so settings added in later versions get a value.
   return { ...saved, settings: { ...DEFAULT_SETTINGS, ...saved?.settings } };
 }
 
 export const saveState = (s: Saved) => write(KEY, s);
 
-/** Focus history per local day: sessions completed and minutes focused. */
+/** Focus history keyed by local date (YYYY-MM-DD): `s` = sessions completed, `m` = minutes focused. */
 export type Stats = Record<string, { s: number; m: number }>;
 
 export const dayKey = (d = new Date()) =>

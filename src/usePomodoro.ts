@@ -21,7 +21,8 @@ export function usePomodoro() {
   const done = run.index >= schedule.length;
   const current = done ? null : schedule[run.index];
   const remaining = running ? Math.max(0, Math.ceil((run.endsAt! - now) / 1000)) : run.remaining;
-  // The plan counts as "untouched" until the first session has been started.
+  // The plan is "pristine" until it is started or the user moves past its first session (skip or
+  // jump). While pristine, settings changes rebuild it right away.
   const pristine = run.index === 0 && !running && run.remaining === schedule[0].minutes * 60;
 
   useEffect(() => saveState({ settings, schedule, run, tasks }), [settings, schedule, run, tasks]);
@@ -32,7 +33,7 @@ export function usePomodoro() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
   }, [settings.theme]);
 
-  // Time is derived from endsAt, so throttled background tabs stay accurate. While paused a slow
+  // Time is derived from endsAt, so throttled background tabs stay accurate. While paused, a slow
   // tick is enough to keep the projected schedule times current.
   useEffect(() => {
     setNow(Date.now());
@@ -50,13 +51,15 @@ export function usePomodoro() {
     setRun(r);
   }, []);
 
-  /** Leaves the current session. `natural` means its timer ran out (vs. skipped). */
+  /** Moves on from the current session. `natural` is true when its timer ran out, false when it was skipped. */
   const advance = useCallback(
     (natural: boolean) => {
       const r = runRef.current;
       const s = settingsRef.current;
       const cur = schedule[r.index];
       if (!cur) return;
+      // A skipped focus session still logs the minutes spent (if at least one), but only a finished
+      // one counts as a completed session.
       if (cur.type === 'work') {
         const leftSec = r.endsAt !== null ? Math.max(0, (r.endsAt - Date.now()) / 1000) : r.remaining;
         const focused = natural ? cur.minutes : (cur.minutes * 60 - leftSec) / 60;
@@ -68,7 +71,7 @@ export function usePomodoro() {
         if (s.sound) chime(cur.type);
         if (s.notifications)
           void notify(
-            cur.type === 'work' ? 'Focus session done 🎉' : 'Break is over',
+            cur.type === 'work' ? 'Focus session complete 🎉' : 'Break is over',
             next ? `Next: ${LABELS[next.type]} · ${next.minutes} min` : 'Plan complete — great work!',
           );
       }
@@ -105,7 +108,7 @@ export function usePomodoro() {
     if (r.endsAt !== null) commitRun({ ...r, endsAt: null, remaining: Math.max(0, Math.ceil((r.endsAt - Date.now()) / 1000)) });
   }, [commitRun]);
 
-  /** Jump to a session in the plan (paused, full length). */
+  /** Jumps to a session in the plan, paused and at full length. */
   const jumpTo = useCallback(
     (i: number) => commitRun({ index: i, endsAt: null, remaining: schedule[i].minutes * 60 }),
     [schedule, commitRun],
@@ -121,7 +124,8 @@ export function usePomodoro() {
     [pristine, reset],
   );
 
-  // Keep the screen on while a session runs, if enabled.
+  // Keep the screen on while a session runs, if enabled. Browsers release the lock when the page is
+  // hidden, so it is requested again when the page becomes visible.
   useEffect(() => {
     if (!settings.keepAwake || !running || !('wakeLock' in navigator)) return;
     let lock: WakeLockSentinel | null = null;
@@ -141,7 +145,7 @@ export function usePomodoro() {
     document.title = current && (running || !pristine) ? `${fmtClock(remaining)} · ${LABELS[current.type]}` : 'Pomodoro Flow';
   }, [current, remaining, running, pristine]);
 
-  /** Projected start/end (epoch ms) for the current and upcoming sessions. */
+  /** Projected start/end (epoch ms) for each session; past sessions get zeros so indexes match the schedule. */
   const projection = useMemo(() => {
     const out: { start: number; end: number }[] = [];
     let t = now;

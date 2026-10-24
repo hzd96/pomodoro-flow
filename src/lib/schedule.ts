@@ -1,5 +1,6 @@
 import type { Session, Settings } from '../types';
 
+/** Builds the plan: each focus session is followed by a break (a long one after every Nth), except the last. */
 export function buildSchedule(s: Settings): Session[] {
   const out: Session[] = [];
   for (let n = 1; n <= s.totalSessions; n++) {
