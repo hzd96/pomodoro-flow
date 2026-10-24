@@ -405,7 +405,7 @@ pomodoro-flow/
 | Offline | Hand-written service worker and web app manifest |
 | Browser APIs | Web Audio, Notifications, Screen Wake Lock, `localStorage`, `<dialog>` |
 | Hosting | [Cloudflare Pages](https://pages.cloudflare.com/) |
-| Testing | [Vitest 3](https://vitest.dev/) unit tests for the pure logic |
+| Testing | [Vitest 4](https://vitest.dev/) unit tests for the pure logic |
 | CI | GitHub Actions (Node from `.nvmrc`, `npm ci`, `npm test`, `npm run build`) |
 
 ---
