@@ -1,31 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Run, Session, Settings, Tasks } from './types';
-import { buildSchedule, fmtClock, LABELS } from './lib/schedule';
-import { loadState, loadStats, recordFocus, saveState } from './lib/storage';
-import { chime, notify, unlockAudio } from './lib/alerts';
+import type { Session, Settings, Tasks, TimerState } from './types';
+import { buildSchedule, LABELS } from './lib/schedule';
+import { formatCountdown } from './lib/format';
+import { loadState, loadStats, recordFocus, saveState, STATE_KEY, STATS_KEY } from './lib/storage';
+import { chime, notify } from './lib/alerts';
+import { startTicker } from './lib/ticker';
 
-const freshRun = (schedule: Session[]): Run => ({ index: 0, endsAt: null, remaining: schedule[0].minutes * 60 });
+/** If an auto-started session is noticed this late, it starts from now instead of the previous end. */
+const MAX_CHAIN_LATENESS_MS = 2 * 60 * 1000;
+
+const freshTimer = (schedule: Session[]): TimerState => ({
+  sessionIndex: 0,
+  endsAt: null,
+  remainingSeconds: (schedule[0]?.minutes ?? 0) * 60,
+});
 
 export function usePomodoro() {
   const [initial] = useState(loadState);
   const [settings, setSettings] = useState<Settings>(initial.settings);
-  const [schedule, setSchedule] = useState<Session[]>(() =>
-    initial.schedule?.length ? initial.schedule : buildSchedule(initial.settings),
-  );
-  const [run, setRun] = useState<Run>(() => initial.run ?? freshRun(schedule));
+  const [schedule, setSchedule] = useState<Session[]>(() => initial.schedule ?? buildSchedule(initial.settings));
+  const [timer, setTimer] = useState<TimerState>(() => initial.timer ?? freshTimer(schedule));
   const [tasks, setTasks] = useState<Tasks>(initial.tasks ?? {});
   const [stats, setStats] = useState(loadStats);
   const [now, setNow] = useState(Date.now);
 
-  const running = run.endsAt !== null;
-  const done = run.index >= schedule.length;
-  const current = done ? null : schedule[run.index];
-  const remaining = running ? Math.max(0, Math.ceil((run.endsAt! - now) / 1000)) : run.remaining;
+  const running = timer.endsAt !== null;
+  const done = timer.sessionIndex >= schedule.length;
+  const current = schedule[timer.sessionIndex] ?? null;
+  const remaining = timer.endsAt !== null ? Math.max(0, Math.ceil((timer.endsAt - now) / 1000)) : timer.remainingSeconds;
   // The plan is "pristine" until it is started or the user moves past its first session (skip or
   // jump). While pristine, settings changes rebuild it right away.
-  const pristine = run.index === 0 && !running && run.remaining === schedule[0].minutes * 60;
+  const pristine = timer.sessionIndex === 0 && !running && timer.remainingSeconds === (schedule[0]?.minutes ?? 0) * 60;
 
-  useEffect(() => saveState({ settings, schedule, run, tasks }), [settings, schedule, run, tasks]);
+  useEffect(() => saveState({ version: 1, settings, schedule, timer, tasks }), [settings, schedule, timer, tasks]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -33,86 +40,112 @@ export function usePomodoro() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg);
   }, [settings.theme]);
 
-  // Time is derived from endsAt, so throttled background tabs stay accurate. While paused, a slow
+  // Time is derived from endsAt, so throttling can't make the countdown drift. While paused, a slow
   // tick is enough to keep the projected schedule times current.
   useEffect(() => {
     setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), running ? 250 : 15000);
-    return () => clearInterval(id);
+    return startTicker(running ? 250 : 15000, () => setNow(Date.now()));
   }, [running]);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
-  const runRef = useRef(run);
-  runRef.current = run;
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
 
-  const commitRun = useCallback((r: Run) => {
-    runRef.current = r; // visible immediately, so a second tick can't advance twice
-    setRun(r);
+  const commitTimer = useCallback((t: TimerState) => {
+    timerRef.current = t; // visible immediately, so a second tick can't finish the same session twice
+    setTimer(t);
   }, []);
 
-  /** Moves on from the current session. `natural` is true when its timer ran out, false when it was skipped. */
-  const advance = useCallback(
-    (natural: boolean) => {
-      const r = runRef.current;
-      const s = settingsRef.current;
-      const cur = schedule[r.index];
-      if (!cur) return;
-      // A skipped focus session still logs the minutes spent (if at least one), but only a finished
-      // one counts as a completed session.
-      if (cur.type === 'work') {
-        const leftSec = r.endsAt !== null ? Math.max(0, (r.endsAt - Date.now()) / 1000) : r.remaining;
-        const focused = natural ? cur.minutes : (cur.minutes * 60 - leftSec) / 60;
-        if (natural || focused >= 1) setStats(recordFocus(focused, natural));
-      }
-      const i = r.index + 1;
-      const next = schedule[i];
-      if (natural) {
-        if (s.sound) chime(cur.type);
-        if (s.notifications)
-          void notify(
-            cur.type === 'work' ? 'Focus session complete 🎉' : 'Break is over',
-            next ? `Next: ${LABELS[next.type]} · ${next.minutes} min` : 'Plan complete — great work!',
-          );
-      }
-      if (!next) return commitRun({ index: schedule.length, endsAt: null, remaining: 0 });
-      const secs = next.minutes * 60;
-      commitRun({ index: i, endsAt: natural && s.autoStart ? Date.now() + secs * 1000 : null, remaining: secs });
+  /** Credits the focus minutes spent so far (if at least one) when leaving a focus session early. */
+  const creditPartial = useCallback(
+    (t: TimerState) => {
+      const cur = schedule[t.sessionIndex];
+      if (cur?.type !== 'work') return;
+      const leftSec = t.endsAt !== null ? Math.max(0, (t.endsAt - Date.now()) / 1000) : t.remainingSeconds;
+      const focused = (cur.minutes * 60 - leftSec) / 60;
+      if (focused >= 1) setStats(recordFocus(focused, Date.now()));
     },
-    [schedule, commitRun],
+    [schedule],
   );
 
-  useEffect(() => {
-    if (run.endsAt !== null && now >= run.endsAt) advance(true);
-  }, [now, run.endsAt, advance]);
+  /** Ends the current session because its timer ran out. */
+  const finish = useCallback(() => {
+    const t = timerRef.current;
+    const s = settingsRef.current;
+    if (t.endsAt === null || Date.now() < t.endsAt) return;
+    const cur = schedule[t.sessionIndex];
+    if (!cur) return;
+    if (cur.type === 'work') setStats(recordFocus(cur.minutes, t.endsAt, t.endsAt));
+    const i = t.sessionIndex + 1;
+    const next = schedule[i];
+    if (s.sound) chime(cur.type);
+    if (s.notifications)
+      void notify(
+        cur.type === 'work' ? 'Focus session complete 🎉' : 'Break is over',
+        next ? `Next: ${LABELS[next.type]} · ${next.minutes} min` : 'Plan complete — great work!',
+      );
+    if (!next) return commitTimer({ sessionIndex: schedule.length, endsAt: null, remainingSeconds: 0 });
+    const secs = next.minutes * 60;
+    if (!s.autoStart) return commitTimer({ sessionIndex: i, endsAt: null, remainingSeconds: secs });
+    // Chain from the previous end so a slightly late tick doesn't push the whole plan back.
+    const startAt = Date.now() - t.endsAt < MAX_CHAIN_LATENESS_MS ? t.endsAt : Date.now();
+    commitTimer({ sessionIndex: i, endsAt: startAt + secs * 1000, remainingSeconds: secs });
+  }, [schedule, commitTimer]);
 
-  const reset = useCallback((s: Settings = settingsRef.current) => {
-    const sched = buildSchedule(s);
-    setSchedule(sched);
-    commitRun(freshRun(sched));
-  }, [commitRun]);
+  useEffect(() => {
+    if (timer.endsAt !== null && now >= timer.endsAt) finish();
+  }, [now, timer.endsAt, finish]);
+
+  /** Moves to a session in the plan, paused and at full length, crediting any focus time spent. */
+  const jumpTo = useCallback(
+    (i: number) => {
+      creditPartial(timerRef.current);
+      const target = schedule[i];
+      commitTimer(
+        target
+          ? { sessionIndex: i, endsAt: null, remainingSeconds: target.minutes * 60 }
+          : { sessionIndex: schedule.length, endsAt: null, remainingSeconds: 0 },
+      );
+    },
+    [schedule, creditPartial, commitTimer],
+  );
+
+  const skip = useCallback(() => jumpTo(timerRef.current.sessionIndex + 1), [jumpTo]);
+
+  /** Rebuilds the plan from settings, crediting any focus time spent in the current session. */
+  const reset = useCallback(
+    (s: Settings = settingsRef.current) => {
+      creditPartial(timerRef.current);
+      const sched = buildSchedule(s);
+      setSchedule(sched);
+      commitTimer(freshTimer(sched));
+    },
+    [creditPartial, commitTimer],
+  );
+
+  /** Reset from a button or shortcut: asks first when a plan is under way. */
+  const confirmReset = useCallback(() => {
+    if (!pristine && !done && !window.confirm('Reset the plan? Focus time so far stays in your stats.')) return;
+    reset();
+  }, [pristine, done, reset]);
 
   const start = useCallback(() => {
-    unlockAudio();
     if (done) {
       const sched = buildSchedule(settingsRef.current);
       setSchedule(sched);
-      return commitRun({ index: 0, endsAt: Date.now() + sched[0].minutes * 60000, remaining: sched[0].minutes * 60 });
+      const first = freshTimer(sched);
+      return commitTimer({ ...first, endsAt: Date.now() + first.remainingSeconds * 1000 });
     }
-    const r = runRef.current;
-    if (r.endsAt === null) commitRun({ ...r, endsAt: Date.now() + r.remaining * 1000 });
-  }, [done, commitRun]);
+    const t = timerRef.current;
+    if (t.endsAt === null) commitTimer({ ...t, endsAt: Date.now() + t.remainingSeconds * 1000 });
+  }, [done, commitTimer]);
 
   const pause = useCallback(() => {
-    const r = runRef.current;
-    if (r.endsAt !== null) commitRun({ ...r, endsAt: null, remaining: Math.max(0, Math.ceil((r.endsAt - Date.now()) / 1000)) });
-  }, [commitRun]);
-
-  /** Jumps to a session in the plan, paused and at full length. */
-  const jumpTo = useCallback(
-    (i: number) => commitRun({ index: i, endsAt: null, remaining: schedule[i].minutes * 60 }),
-    [schedule, commitRun],
-  );
+    const t = timerRef.current;
+    if (t.endsAt !== null)
+      commitTimer({ ...t, endsAt: null, remainingSeconds: Math.max(0, Math.ceil((t.endsAt - Date.now()) / 1000)) });
+  }, [commitTimer]);
 
   /** Updates settings; a plan that hasn't started yet is rebuilt right away. */
   const updateSettings = useCallback(
@@ -124,25 +157,46 @@ export function usePomodoro() {
     [pristine, reset],
   );
 
+  // Follow changes made in another tab or the installed app, so the two don't overwrite each other.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STATS_KEY) setStats(loadStats());
+      if (e.key !== STATE_KEY) return;
+      const s = loadState();
+      setSettings(s.settings);
+      if (s.schedule) setSchedule(s.schedule);
+      if (s.timer) commitTimer(s.timer);
+      setTasks(s.tasks ?? {});
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [commitTimer]);
+
   // Keep the screen on while a session runs, if enabled. Browsers release the lock when the page is
   // hidden, so it is requested again when the page becomes visible.
   useEffect(() => {
     if (!settings.keepAwake || !running || !('wakeLock' in navigator)) return;
     let lock: WakeLockSentinel | null = null;
+    let active = true;
     const acquire = () => {
-      if (document.visibilityState === 'visible')
-        navigator.wakeLock.request('screen').then((l) => (lock = l), () => {});
+      if (document.visibilityState !== 'visible') return;
+      navigator.wakeLock.request('screen').then(
+        (l) => (active ? (lock = l) : void l.release()),
+        () => {},
+      );
     };
     acquire();
     document.addEventListener('visibilitychange', acquire);
     return () => {
+      active = false;
       document.removeEventListener('visibilitychange', acquire);
       void lock?.release();
     };
   }, [settings.keepAwake, running]);
 
   useEffect(() => {
-    document.title = current && (running || !pristine) ? `${fmtClock(remaining)} · ${LABELS[current.type]}` : 'Pomodoro Flow';
+    document.title =
+      current && (running || !pristine) ? `${formatCountdown(remaining)} · ${LABELS[current.type]}` : 'Pomodoro Flow';
   }, [current, remaining, running, pristine]);
 
   /** Projected start/end (epoch ms) for each session; past sessions get zeros so indexes match the schedule. */
@@ -150,18 +204,18 @@ export function usePomodoro() {
     const out: { start: number; end: number }[] = [];
     let t = now;
     schedule.forEach((s, i) => {
-      if (i < run.index) return out.push({ start: 0, end: 0 });
-      const end = i === run.index ? (run.endsAt ?? now + run.remaining * 1000) : t + s.minutes * 60000;
-      out.push({ start: i === run.index ? now : t, end });
+      if (i < timer.sessionIndex) return out.push({ start: 0, end: 0 });
+      const isCurrent = i === timer.sessionIndex;
+      const end = isCurrent ? (timer.endsAt ?? now + timer.remainingSeconds * 1000) : t + s.minutes * 60000;
+      out.push({ start: isCurrent ? now : t, end });
       t = end;
     });
     return out;
-  }, [schedule, run, now]);
+  }, [schedule, timer, now]);
 
   return {
-    settings, schedule, run, tasks, stats, current, remaining, running, done, pristine, projection, now,
-    start, pause, reset, jumpTo, setTasks, updateSettings,
-    skip: () => advance(false),
+    settings, schedule, timer, tasks, stats, current, remaining, running, done, pristine, projection, now,
+    start, pause, skip, reset, confirmReset, jumpTo, setTasks, updateSettings,
   };
 }
 

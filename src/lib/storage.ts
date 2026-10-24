@@ -1,4 +1,6 @@
-import type { Run, Session, Settings, Tasks } from '../types';
+import type { NumericSetting, Session, Settings, Tasks, ThemeName, TimerState } from '../types';
+import { clampSetting, SETTING_BOUNDS } from './schedule';
+import { addFocus, emptyStats, type StatsRecord } from './stats';
 
 export const DEFAULT_SETTINGS: Settings = {
   workMinutes: 25,
@@ -14,20 +16,24 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'classic',
 };
 
-const KEY = 'pomoflow:v1';
-const STATS_KEY = 'pomoflow:stats';
+const THEMES: ThemeName[] = ['classic', 'cyberpunk', 'forest', 'ocean', 'synthwave', 'glamour', 'light'];
 
-export interface Saved {
+/** Keep in sync with the inline theme script in index.html (a unit test checks this). */
+export const STATE_KEY = 'pomodoro-flow:state';
+export const STATS_KEY = 'pomodoro-flow:stats';
+
+export interface SavedState {
+  version: 1;
   settings: Settings;
   schedule?: Session[];
-  run?: Run;
+  timer?: TimerState;
   tasks?: Tasks;
 }
 
-function read<T>(key: string): T | null {
+function read(key: string): unknown {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
@@ -41,27 +47,60 @@ function write(key: string, value: unknown) {
   }
 }
 
-export function loadState(): Saved {
-  const saved = read<Partial<Saved>>(KEY);
-  // Merge over the defaults so settings added in later versions get a value.
-  return { ...saved, settings: { ...DEFAULT_SETTINGS, ...saved?.settings } };
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Merges saved settings over the defaults, dropping wrong types and clamping numbers to the form's bounds. */
+export function sanitizeSettings(raw: unknown): Settings {
+  const s: Settings = { ...DEFAULT_SETTINGS };
+  if (!isObject(raw)) return s;
+  for (const key of Object.keys(SETTING_BOUNDS) as NumericSetting[]) {
+    const v = raw[key];
+    if (typeof v === 'number' && Number.isFinite(v)) s[key] = clampSetting(key, v);
+  }
+  for (const key of ['autoStart', 'sound', 'notifications', 'keepAwake'] as const) {
+    if (typeof raw[key] === 'boolean') s[key] = raw[key];
+  }
+  if (raw.timerStyle === 'digital' || raw.timerStyle === 'analog') s.timerStyle = raw.timerStyle;
+  if (THEMES.includes(raw.theme as ThemeName)) s.theme = raw.theme as ThemeName;
+  return s;
 }
 
-export const saveState = (s: Saved) => write(KEY, s);
+const isSession = (v: unknown): v is Session =>
+  isObject(v) &&
+  (v.type === 'work' || v.type === 'short' || v.type === 'long') &&
+  typeof v.minutes === 'number' && v.minutes > 0 &&
+  typeof v.focusNumber === 'number';
 
-/** Focus history keyed by local date (YYYY-MM-DD): `s` = sessions completed, `m` = minutes focused. */
-export type Stats = Record<string, { s: number; m: number }>;
+/** Loads saved state, discarding any part that doesn't have the expected shape. */
+export function loadState(): SavedState {
+  const raw = read(STATE_KEY);
+  if (!isObject(raw) || raw.version !== 1) return { version: 1, settings: DEFAULT_SETTINGS };
+  const out: SavedState = { version: 1, settings: sanitizeSettings(raw.settings) };
+  if (Array.isArray(raw.schedule) && raw.schedule.length && raw.schedule.every(isSession)) {
+    out.schedule = raw.schedule;
+    const t = raw.timer;
+    if (
+      isObject(t) &&
+      typeof t.sessionIndex === 'number' && t.sessionIndex >= 0 && t.sessionIndex <= raw.schedule.length &&
+      (t.endsAt === null || typeof t.endsAt === 'number') &&
+      typeof t.remainingSeconds === 'number' && t.remainingSeconds >= 0
+    )
+      out.timer = t as unknown as TimerState;
+  }
+  if (isObject(raw.tasks)) out.tasks = raw.tasks as Tasks;
+  return out;
+}
 
-export const dayKey = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export const saveState = (s: SavedState) => write(STATE_KEY, s);
 
-export const loadStats = (): Stats => read<Stats>(STATS_KEY) ?? {};
+export function loadStats(): StatsRecord {
+  const raw = read(STATS_KEY);
+  return isObject(raw) && raw.version === 1 && isObject(raw.days) ? (raw as unknown as StatsRecord) : emptyStats();
+}
 
-export function recordFocus(minutes: number, completed: boolean): Stats {
-  const stats = loadStats();
-  const k = dayKey();
-  const day = stats[k] ?? { s: 0, m: 0 };
-  stats[k] = { s: day.s + (completed ? 1 : 0), m: Math.round((day.m + minutes) * 10) / 10 };
+/** Re-reads stats before writing, so another tab's progress isn't overwritten. */
+export function recordFocus(minutes: number, at: number, completedAt?: number): StatsRecord {
+  const stats = addFocus(loadStats(), minutes, at, completedAt);
   write(STATS_KEY, stats);
   return stats;
 }

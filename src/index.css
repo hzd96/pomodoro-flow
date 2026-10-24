@@ -28,7 +28,7 @@
   --danger: #ef4444; --line: rgb(255 255 255 / 0.08); color-scheme: dark;
 }
 [data-theme="forest"] {
-  --bg: #1a2e29; --surface: #2c4a44; --surface-2: #3a5851; --fg: #e8e8e3; --muted: #a9a9a1;
+  --bg: #1a2e29; --surface: #2c4a44; --surface-2: #3a5851; --fg: #e8e8e3; --muted: #c6c6be;
   --primary: #a3bf68; --accent: #e5874a; --work: #a3bf68; --short: #71a58f; --long: #e5874a;
   --danger: #d96262; --line: rgb(255 255 255 / 0.08); color-scheme: dark;
 }
@@ -49,9 +49,12 @@
 }
 [data-theme="light"] {
   --bg: #f4f5f7; --surface: #ffffff; --surface-2: #e9ecef; --fg: #1f2328; --muted: #5f6873;
-  --primary: #e5484d; --accent: #12a594; --work: #e5484d; --short: #12a594; --long: #7c5cdb;
+  --primary: #c9353a; --accent: #0d8576; --work: #c9353a; --short: #0d8576; --long: #7c5cdb;
   --danger: #d32f2f; --line: rgb(0 0 0 / 0.08); color-scheme: light;
 }
+
+/* A visible focus ring for anything without its own focus style. */
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 html,
 body {
@@ -83,7 +86,6 @@ body {
 }
 .btn:hover { filter: brightness(1.08); }
 .btn:active { transform: scale(0.97); }
-.btn:focus-visible, .field:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 
 .field {
   width: 100%; border-radius: 0.7rem; padding: 0.55rem 0.75rem;

@@ -39,7 +39,7 @@ export async function requestNotifications(): Promise<boolean> {
 
 export async function notify(title: string, body: string) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const opts = { body, icon: '/icons/icon-192.png', tag: 'pomoflow' };
+  const opts = { body, icon: '/icons/icon-192.png', tag: 'pomodoro-flow' };
   try {
     // Prefer the service worker: `new Notification()` throws on Android Chrome.
     const reg = await navigator.serviceWorker?.getRegistration();

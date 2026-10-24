@@ -14,7 +14,7 @@
     <script>
       // Apply the saved theme before first paint to avoid a flash of the default theme.
       try {
-        var s = JSON.parse(localStorage.getItem('pomoflow:v1') || '{}');
+        var s = JSON.parse(localStorage.getItem('pomodoro-flow:state') || '{}');
         document.documentElement.dataset.theme = (s.settings && s.settings.theme) || 'classic';
       } catch (e) {
         document.documentElement.dataset.theme = 'classic';
