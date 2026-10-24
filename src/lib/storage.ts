@@ -64,6 +64,3 @@ export function recordFocus(minutes: number, completed: boolean): Stats {
   write(STATS_KEY, stats);
   return stats;
 }
-
-export const getAccessKey = () => read<string>('pomoflow:access-key') ?? '';
-export const setAccessKey = (k: string) => write('pomoflow:access-key', k);

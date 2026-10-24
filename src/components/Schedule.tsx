@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Pomodoro } from '../usePomodoro';
 import { fmtMinutes, fmtTime, LABELS } from '../lib/schedule';
-import { AiPlanner } from './AiPlanner';
 import { Icon } from './Icon';
 
 const DOT = { work: 'bg-work', short: 'bg-short', long: 'bg-long' } as const;
@@ -34,8 +33,6 @@ export function Schedule({ p }: { p: Pomodoro }) {
           </span>
         )}
       </div>
-
-      <AiPlanner p={p} />
 
       <ol className="-mr-2 max-h-[60vh] space-y-1.5 overflow-y-auto pr-2">
         {schedule.map((s, i) => {

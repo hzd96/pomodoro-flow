@@ -1,6 +1,4 @@
-# Cloudflare Pages config (used by `npm run deploy` / `npm run cf:dev`).
-# Secrets (GEMINI_API_KEY, ACCESS_KEY) are set in the dashboard or with
-# `npx wrangler pages secret put NAME` — never commit them here.
+# Cloudflare Pages config (used by `npm run deploy`).
 name = "pomodoro-flow"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-10-01"
